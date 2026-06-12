@@ -50,11 +50,17 @@ func TestProfileComplete(t *testing.T) {
 	if len(Me.About) == 0 {
 		t.Error("About is empty")
 	}
+	if School.School == "" || School.Year == "" {
+		t.Error("School education entry incomplete")
+	}
 }
 
 func TestStatsAndSkills(t *testing.T) {
 	if len(Stats) != 4 {
 		t.Errorf("len(Stats) = %d, want 4", len(Stats))
+	}
+	if len(Skills) == 0 {
+		t.Error("Skills is empty")
 	}
 	for _, s := range Skills {
 		if s.Level <= 0 || s.Level > 100 {
