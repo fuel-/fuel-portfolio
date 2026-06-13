@@ -23,6 +23,7 @@ type command struct {
 	run  func(args []string) Result
 }
 
+// A Registry is immutable after New, so Execute is safe for concurrent use.
 type Registry struct {
 	cmds  map[string]*command
 	order []string
@@ -49,7 +50,8 @@ func (r *Registry) add(name, desc string, run func([]string) Result) {
 }
 
 // Execute parses one input line and runs the matching command.
-// User input is always HTML-escaped before echoing back.
+// User input is HTML-escaped at the boundary so no command can ever echo
+// raw user input into HTML.
 func (r *Registry) Execute(input string) Result {
 	fields := strings.Fields(input)
 	if len(fields) == 0 {
@@ -60,7 +62,14 @@ func (r *Registry) Execute(input string) Result {
 	if !ok {
 		return Result{HTML: errLine(fmt.Sprintf("command not found: %s — try 'help'", html.EscapeString(name)))}
 	}
-	return c.run(fields[1:])
+	// Escape every argument at the boundary so no command can ever echo
+	// raw user input into HTML. Legitimate inputs (slugs, command names)
+	// contain no HTML metacharacters, so escaping never alters them.
+	args := fields[1:]
+	for i, a := range args {
+		args[i] = html.EscapeString(a)
+	}
+	return c.run(args)
 }
 
 func line(s string) string    { return `<div class="term-line">` + s + `</div>` }
@@ -96,7 +105,7 @@ func openProject(args []string) Result {
 	}
 	p, ok := content.ProjectBySlug(strings.ToLower(args[0]))
 	if !ok {
-		return Result{HTML: errLine("no such project: " + html.EscapeString(args[0]))}
+		return Result{HTML: errLine("no such project: " + args[0])}
 	}
 	return Result{HTML: line("opening " + accent(p.Slug) + "…"), Action: "open:/projects/" + p.Slug}
 }
@@ -113,13 +122,15 @@ func resumeCmd([]string) Result {
 func skillsCmd([]string) Result {
 	var b strings.Builder
 	for _, s := range content.Skills {
-		bar := strings.Repeat("█", s.Level/10) + strings.Repeat("░", 10-s.Level/10)
+		level := min(max(s.Level, 0), 100)
+		bar := strings.Repeat("█", level/10) + strings.Repeat("░", 10-level/10)
 		b.WriteString(line(fmt.Sprintf("%-28s %s %d", s.Name, accent(bar), s.Level)))
 	}
 	return Result{HTML: b.String()}
 }
 
 func contactCmd([]string) Result {
+	// content.Me is owner-authored, trusted copy — not user input.
 	p := content.Me
 	return Result{
 		HTML: line(`email: <a class="term-accent underline" href="mailto:`+p.Email+`">`+p.Email+`</a>`) +
