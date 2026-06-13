@@ -1,0 +1,37 @@
+{{define "contact_form"}}
+<form hx-post="/contact" hx-swap="outerHTML" novalidate class="space-y-5">
+  <div class="grid gap-5 sm:grid-cols-2">
+    <label class="block">
+      <span class="font-mono text-xs text-fog-400">name *</span>
+      <input name="name" value="{{.Name}}" class="mt-1.5 w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 outline-none transition focus:border-phosphor-500">
+      {{with .Errors.name}}<p class="mt-1 font-mono text-xs text-red-400">! {{.}}</p>{{end}}
+    </label>
+    <label class="block">
+      <span class="font-mono text-xs text-fog-400">email *</span>
+      <input name="email" type="email" value="{{.Email}}" class="mt-1.5 w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 outline-none transition focus:border-phosphor-500">
+      {{with .Errors.email}}<p class="mt-1 font-mono text-xs text-red-400">! {{.}}</p>{{end}}
+    </label>
+  </div>
+  <div class="grid gap-5 sm:grid-cols-2">
+    <label class="block">
+      <span class="font-mono text-xs text-fog-400">company</span>
+      <input name="company" value="{{.Company}}" class="mt-1.5 w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 outline-none transition focus:border-phosphor-500">
+    </label>
+    <label class="block">
+      <span class="font-mono text-xs text-fog-400">this is about *</span>
+      <select name="kind" class="mt-1.5 w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 outline-none transition focus:border-phosphor-500">
+        <option value="hiring" {{if eq .Kind "hiring"}}selected{{end}}>hiring me full-time</option>
+        <option value="contract" {{if eq .Kind "contract"}}selected{{end}}>contract / freelance work</option>
+        <option value="other" {{if eq .Kind "other"}}selected{{end}}>something else</option>
+      </select>
+      {{with .Errors.kind}}<p class="mt-1 font-mono text-xs text-red-400">! {{.}}</p>{{end}}
+    </label>
+  </div>
+  <label class="block">
+    <span class="font-mono text-xs text-fog-400">message *</span>
+    <textarea name="message" rows="5" class="mt-1.5 w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 outline-none transition focus:border-phosphor-500">{{.Message}}</textarea>
+    {{with .Errors.message}}<p class="mt-1 font-mono text-xs text-red-400">! {{.}}</p>{{end}}
+  </label>
+  <button type="submit" class="rounded-md bg-phosphor-500 px-6 py-2.5 font-mono text-sm font-semibold text-ink-950 transition hover:bg-phosphor-400">./send-message</button>
+</form>
+{{end}}
