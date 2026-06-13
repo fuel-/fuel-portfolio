@@ -13,7 +13,10 @@
     w = canvas.width = canvas.offsetWidth * dpr;
     h = canvas.height = canvas.offsetHeight * dpr;
   }
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", function () {
+    resize();
+    if (reduced) frame();
+  });
   resize();
 
   var GAP = 28 * dpr;

@@ -51,7 +51,11 @@
         })(start);
       });
     }, { threshold: 0.4 });
-    counters.forEach(function (el) { io.observe(el); });
+    counters.forEach(function (el) {
+      var p = parseStat(el.textContent.trim());
+      if (p) el.textContent = (0).toFixed(p.decimals) + p.suffix;
+      io.observe(el);
+    });
   }
 
   // --- scroll reveal -----------------------------------------------------
