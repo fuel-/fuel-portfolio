@@ -40,7 +40,9 @@
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
         io.unobserve(entry.target);
-        var p = parseStat(entry.target.textContent.trim());
+        // Read the true value stashed before we zeroed the display, not the
+        // current (zeroed) textContent — otherwise we'd animate 0 -> 0.
+        var p = parseStat(entry.target.dataset.countTarget || "");
         if (!p) return;
         var start = performance.now();
         (function step(now) {
@@ -53,7 +55,12 @@
     }, { threshold: 0.4 });
     counters.forEach(function (el) {
       var p = parseStat(el.textContent.trim());
-      if (p) el.textContent = (0).toFixed(p.decimals) + p.suffix;
+      if (p) {
+        // Stash the true value, then show the zeroed frame off-screen so the
+        // count-up starts clean (no true -> 0 snap when it scrolls in).
+        el.dataset.countTarget = el.textContent.trim();
+        el.textContent = (0).toFixed(p.decimals) + p.suffix;
+      }
       io.observe(el);
     });
   }
