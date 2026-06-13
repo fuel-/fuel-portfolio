@@ -21,6 +21,7 @@ type contactForm struct {
 }
 
 func (s *Server) contact(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10) // 64 KB; message cap is 5000 chars
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return

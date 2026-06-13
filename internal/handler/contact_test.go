@@ -69,6 +69,20 @@ func TestContactPreservesValuesOnError(t *testing.T) {
 	}
 }
 
+func TestContactRejectsOversizedBody(t *testing.T) {
+	srv, st := newTestServer(t)
+	big := strings.Repeat("x", 70<<10)
+	rec := postForm(t, srv, "/contact", url.Values{
+		"name": {"A"}, "email": {"a@b.com"}, "kind": {"other"}, "message": {big},
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400 for oversized body", rec.Code)
+	}
+	if got, _ := st.ListInquiries(); len(got) != 0 {
+		t.Errorf("oversized submission was saved: %d rows", len(got))
+	}
+}
+
 func TestValidate(t *testing.T) {
 	valid := contactForm{Name: "n", Email: "e@x.com", Kind: "hiring", Message: "m"}
 	tests := []struct {
