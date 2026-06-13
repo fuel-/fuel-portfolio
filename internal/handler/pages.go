@@ -47,7 +47,3 @@ func (s *Server) serverError(w http.ResponseWriter, r *http.Request) {
 	d.Title = "500"
 	s.renderPage(w, http.StatusInternalServerError, "500.html", d)
 }
-
-func (s *Server) terminal(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
-}
