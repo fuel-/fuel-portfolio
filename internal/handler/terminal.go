@@ -7,13 +7,14 @@ import (
 )
 
 func (s *Server) terminal(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 64<<10) // 64 KB; cmd is capped at 200 chars
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
 	cmd := r.PostFormValue("cmd")
-	if len(cmd) > 200 {
-		cmd = cmd[:200]
+	if len([]rune(cmd)) > 200 {
+		cmd = string([]rune(cmd)[:200])
 	}
 	res := s.reg.Execute(cmd)
 	if res.Action != "" {
