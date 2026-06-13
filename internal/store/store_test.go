@@ -2,6 +2,7 @@ package store
 
 import (
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -24,14 +25,26 @@ func TestSaveAndListInquiry(t *testing.T) {
 		t.Errorf("id = %d, want > 0", id)
 	}
 
+	if _, err := st.SaveInquiry(Inquiry{
+		Name: "Grace Hopper", Email: "grace@example.com", Kind: "hiring", Message: "Come build compilers.",
+	}); err != nil {
+		t.Fatalf("SaveInquiry (second): %v", err)
+	}
+
 	got, err := st.ListInquiries()
 	if err != nil {
 		t.Fatalf("ListInquiries: %v", err)
 	}
-	if len(got) != 1 {
-		t.Fatalf("len = %d, want 1", len(got))
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2", len(got))
 	}
-	q := got[0]
+	if got[0].Name != "Grace Hopper" {
+		t.Errorf("got[0].Name = %q, want Grace Hopper (newest first)", got[0].Name)
+	}
+	if got[1].Name != "Ada Lovelace" {
+		t.Errorf("got[1].Name = %q, want Ada Lovelace", got[1].Name)
+	}
+	q := got[1]
 	if q.Name != "Ada Lovelace" || q.Email != "ada@example.com" ||
 		q.Company != "Analytical Engines" || q.Kind != "contract" || q.Message != "Need a compiler." {
 		t.Errorf("round-trip mismatch: %+v", q)
@@ -63,5 +76,39 @@ func TestPersistsAcrossReopen(t *testing.T) {
 	}
 	if len(got) != 1 {
 		t.Errorf("len = %d after reopen, want 1", len(got))
+	}
+}
+
+func TestConcurrentSaves(t *testing.T) {
+	st, err := Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer st.Close()
+
+	const n = 50
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := st.SaveInquiry(Inquiry{Name: "n", Email: "e@x.com", Kind: "other", Message: "m"})
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent SaveInquiry: %v", err)
+		}
+	}
+	got, err := st.ListInquiries()
+	if err != nil {
+		t.Fatalf("ListInquiries: %v", err)
+	}
+	if len(got) != n {
+		t.Errorf("len = %d, want %d", len(got), n)
 	}
 }
