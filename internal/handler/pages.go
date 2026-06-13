@@ -48,11 +48,6 @@ func (s *Server) serverError(w http.ResponseWriter, r *http.Request) {
 	s.renderPage(w, http.StatusInternalServerError, "500.html", d)
 }
 
-// TEMPORARY until Task 7/8.
-func (s *Server) contact(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not implemented", http.StatusNotImplemented)
-}
-
 func (s *Server) terminal(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not implemented", http.StatusNotImplemented)
 }
