@@ -1,0 +1,21 @@
+{{define "project_card"}}
+<article id="proj-{{.Slug}}" class="group rounded-xl border border-ink-700 bg-ink-900/60 p-6 transition hover:border-phosphor-500/50 sm:p-8" data-reveal>
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h3 class="text-xl font-semibold text-white">{{.Name}}</h3>
+      <p class="mt-1 font-mono text-sm text-phosphor-300">{{.Tagline}}</p>
+    </div>
+    <div class="flex gap-6">
+      {{range .Metrics}}<div class="text-right"><p class="font-mono text-lg font-semibold text-phosphor-400">{{.Value}}</p><p class="text-xs text-fog-400">{{.Label}}</p></div>{{end}}
+    </div>
+  </div>
+  <p class="mt-4 max-w-3xl text-fog-400">{{.Summary}}</p>
+  <div class="mt-5 flex flex-wrap gap-2">
+    {{range .Tech}}<span class="rounded border border-ink-700 px-2 py-0.5 font-mono text-xs text-fog-400">{{.}}</span>{{end}}
+  </div>
+  <div class="mt-6 flex items-center gap-4 font-mono text-sm">
+    <button data-project-link="{{.Slug}}" hx-get="/projects/{{.Slug}}" hx-target="#proj-{{.Slug}}" hx-swap="outerHTML show:top" hx-push-url="/projects/{{.Slug}}" class="text-phosphor-400 transition hover:text-phosphor-300">cat case-study.md →</button>
+    {{if .Link}}<a href="{{.Link}}" class="text-fog-400 transition hover:text-phosphor-300">{{.LinkLabel}} ↗</a>{{end}}
+  </div>
+</article>
+{{end}}

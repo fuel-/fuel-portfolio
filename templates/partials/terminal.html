@@ -1,0 +1,32 @@
+{{define "terminal"}}
+<div x-data="{ open: false }"
+     @keydown.window="if ($event.key === '`' && !['INPUT','TEXTAREA','SELECT'].includes($event.target.tagName)) { $event.preventDefault(); open = !open; if (open) $nextTick(() => $refs.cmd.focus()) }"
+     @terminal-open.window="open = true; $nextTick(() => $refs.cmd.focus())"
+     @terminal-close.window="open = false"
+     @keydown.escape.window="open = false">
+  <div x-show="open" x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="translate-y-full"
+       x-transition:enter-end="translate-y-0"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="translate-y-0"
+       x-transition:leave-end="translate-y-full"
+       class="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-4xl px-4 pb-4" role="dialog" aria-label="interactive terminal">
+    <div class="overflow-hidden rounded-xl border border-phosphor-500/30 bg-ink-950/95 shadow-2xl shadow-phosphor-500/10 backdrop-blur">
+      <div class="flex items-center justify-between border-b border-ink-800 px-4 py-2">
+        <span class="font-mono text-xs text-fog-400">jasen@gideon: ~ — visitor session</span>
+        <button @click="open = false" class="font-mono text-xs text-fog-400 transition hover:text-phosphor-300" aria-label="close terminal">[x]</button>
+      </div>
+      <div id="term-output" class="h-72 overflow-y-auto px-4 py-3 font-mono text-sm leading-relaxed">
+        <div class="term-line text-fog-400">jasen.sh v1.0 — type <span class="term-accent">help</span> to get started</div>
+      </div>
+      <form id="terminal-form" hx-post="/terminal" hx-target="#term-output" hx-swap="beforeend"
+            class="flex items-center gap-2 border-t border-ink-800 px-4 py-3">
+        <span class="font-mono text-sm text-phosphor-400">$</span>
+        <input x-ref="cmd" name="cmd" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="200"
+               class="w-full bg-transparent font-mono text-sm outline-none" aria-label="terminal command input">
+      </form>
+    </div>
+  </div>
+</div>
+{{end}}

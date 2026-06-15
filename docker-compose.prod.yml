@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    container_name: portfolio-app
+    restart: unless-stopped
+    volumes:
+      - portfolio-data:/data
+    networks:
+      - caddy-net
+
+volumes:
+  portfolio-data:
+
+networks:
+  caddy-net:
+    external: true

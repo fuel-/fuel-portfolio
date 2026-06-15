@@ -1,0 +1,24 @@
+{{define "project_detail"}}
+<article id="proj-{{.Slug}}" class="rounded-xl border border-phosphor-500/40 bg-ink-900/80 p-6 sm:p-8">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <p class="font-mono text-xs text-fog-400">$ cat ./work/{{.Slug}}/case-study.md</p>
+      <h3 class="mt-2 text-2xl font-semibold text-white">{{.Name}}</h3>
+      <p class="mt-1 font-mono text-sm text-phosphor-300">{{.Tagline}}</p>
+    </div>
+    <button hx-get="/projects/{{.Slug}}/card" hx-target="#proj-{{.Slug}}" hx-swap="outerHTML" hx-push-url="/" class="font-mono text-sm text-fog-400 transition hover:text-phosphor-300" aria-label="collapse case study">[x] close</button>
+  </div>
+  <div class="mt-6 flex flex-wrap gap-8">
+    {{range .Metrics}}<div><p class="font-mono text-2xl font-semibold text-phosphor-400">{{.Value}}</p><p class="text-xs text-fog-400">{{.Label}}</p></div>{{end}}
+  </div>
+  <div class="mt-8 max-w-3xl space-y-8">
+    <section><h4 class="font-mono text-xs uppercase tracking-widest text-amber-glow">problem</h4>{{range .Problem}}<p class="mt-3 leading-relaxed">{{.}}</p>{{end}}</section>
+    <section><h4 class="font-mono text-xs uppercase tracking-widest text-amber-glow">approach</h4>{{range .Approach}}<p class="mt-3 leading-relaxed">{{.}}</p>{{end}}</section>
+    <section><h4 class="font-mono text-xs uppercase tracking-widest text-amber-glow">outcome</h4>{{range .Outcome}}<p class="mt-3 leading-relaxed">{{.}}</p>{{end}}</section>
+  </div>
+  <div class="mt-8 flex flex-wrap items-center gap-2">
+    {{range .Tech}}<span class="rounded border border-ink-700 px-2 py-0.5 font-mono text-xs text-fog-400">{{.}}</span>{{end}}
+    {{if .Link}}<a href="{{.Link}}" class="ml-auto font-mono text-sm text-phosphor-400 transition hover:text-phosphor-300">{{.LinkLabel}} ↗</a>{{end}}
+  </div>
+</article>
+{{end}}
