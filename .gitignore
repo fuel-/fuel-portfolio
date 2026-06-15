@@ -3,3 +3,4 @@ bin/
 *.db-shm
 *.db-wal
 docs/walkthrough/
+deploy-steps.md
