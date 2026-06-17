@@ -1,5 +1,5 @@
 services:
-  app:
+  portfolio:
     build: .
     container_name: portfolio-app
     restart: unless-stopped
