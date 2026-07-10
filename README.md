@@ -26,6 +26,11 @@ Press `` ` `` on the site to open the terminal. Try `help`, `projects`,
 
 Inquiries land in the `inquiries` table of the SQLite db at `/data/inquiries.db`.
 
+To also get emailed on each inquiry, `cp .env.example .env` and fill in the
+SMTP creds (Resend). If `.env` is absent or incomplete, the app just saves to
+the db and skips email — the db row is always the source of truth. The email's
+Reply-To is set to the visitor, so replying from your inbox reaches them.
+
 ## Content
 
 All copy lives in `internal/content/content.go` — projects, resume, skills,
