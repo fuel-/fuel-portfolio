@@ -1,73 +1,79 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"net/smtp"
+	"io"
+	"net/http"
 	"os"
-	"strings"
+	"time"
 
 	"portfolio/internal/store"
 )
 
-// mailer sends one notification email per inquiry over SMTP.
-// It is nil when the SMTP_* env vars are unset — the contact handler then
-// just skips notifying, so local dev and tests need no mail server.
+// mailer sends one notification email per inquiry via Resend's HTTPS API.
+// It is nil when the required env vars are unset — the contact handler then
+// skips notifying, so local dev and tests need no mail config.
+//
+// We use the HTTP API (port 443) rather than SMTP because VPS hosts commonly
+// block outbound SMTP ports (Linode does), which silently blackholes mail —
+// the TCP connection completes but no data flows. 443 is always open.
 type mailer struct {
-	addr string // host:port
-	auth smtp.Auth
-	from string // must be on an SMTP-verified domain
-	to   string // inbox that receives the notification
+	apiKey string // Resend API key (re_...); read from SMTP_PASS for env back-compat
+	from   string // must be on a Resend-verified domain
+	to     string // inbox that receives the notification
+	http   *http.Client
 }
 
-// mailerFromEnv builds a mailer from SMTP_* env vars, or returns nil if any
-// required var is missing. SMTP_PORT defaults to 587 (STARTTLS submission).
+// mailerFromEnv builds a mailer from env vars, or returns nil if any is missing.
+// Var names keep the SMTP_ prefix so an existing deploy's .env keeps working:
+// SMTP_PASS holds the Resend API key; SMTP_HOST/PORT/USER are no longer used.
 func mailerFromEnv() *mailer {
-	host := os.Getenv("SMTP_HOST")
-	user := os.Getenv("SMTP_USER")
-	pass := os.Getenv("SMTP_PASS")
+	key := os.Getenv("SMTP_PASS")
 	from := os.Getenv("SMTP_FROM")
 	to := os.Getenv("SMTP_TO")
-	if host == "" || user == "" || pass == "" || from == "" || to == "" {
+	if key == "" || from == "" || to == "" {
 		return nil
 	}
-	port := os.Getenv("SMTP_PORT")
-	if port == "" {
-		port = "587"
-	}
 	return &mailer{
-		addr: host + ":" + port,
-		auth: smtp.PlainAuth("", user, pass, host),
-		from: from,
-		to:   to,
+		apiKey: key,
+		from:   from,
+		to:     to,
+		http:   &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
 func (m *mailer) send(q store.Inquiry) error {
-	return smtp.SendMail(m.addr, m.auth, m.from, []string{m.to}, m.compose(q))
+	req, err := http.NewRequest(http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(m.payload(q)))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+m.apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := m.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<10))
+		return fmt.Errorf("resend %s: %s", resp.Status, body)
+	}
+	return nil
 }
 
-// compose builds the RFC 5322 message. Reply-To is the visitor so a reply from
-// your inbox reaches them directly. Header values are CRLF-stripped to prevent
-// header injection from free-text fields; the message body is safe (net/smtp's
-// DataWriter dot-stuffs it, and it sits below the header/body separator).
-func (m *mailer) compose(q store.Inquiry) []byte {
-	var b strings.Builder
-	fmt.Fprintf(&b, "From: %s\r\n", m.from)
-	fmt.Fprintf(&b, "To: %s\r\n", m.to)
-	fmt.Fprintf(&b, "Reply-To: %s\r\n", headerSafe(q.Email))
-	fmt.Fprintf(&b, "Subject: Portfolio inquiry (%s) from %s\r\n", headerSafe(q.Kind), headerSafe(q.Name))
-	b.WriteString("Content-Type: text/plain; charset=utf-8\r\n")
-	b.WriteString("\r\n")
-	fmt.Fprintf(&b, "Name:    %s\r\n", q.Name)
-	fmt.Fprintf(&b, "Email:   %s\r\n", q.Email)
-	fmt.Fprintf(&b, "Company: %s\r\n", q.Company)
-	fmt.Fprintf(&b, "Kind:    %s\r\n", q.Kind)
-	b.WriteString("\r\n")
-	b.WriteString(q.Message)
-	b.WriteString("\r\n")
-	return []byte(b.String())
-}
-
-func headerSafe(s string) string {
-	return strings.NewReplacer("\r", " ", "\n", " ").Replace(s)
+// payload builds the Resend API request body. Reply-To is the visitor so a
+// reply from your inbox reaches them directly. JSON encoding escapes every
+// field, so free-text input can't inject headers or break the request.
+func (m *mailer) payload(q store.Inquiry) []byte {
+	b, _ := json.Marshal(map[string]any{
+		"from":     m.from,
+		"to":       []string{m.to},
+		"reply_to": q.Email,
+		"subject":  fmt.Sprintf("Portfolio inquiry (%s) from %s", q.Kind, q.Name),
+		"text": fmt.Sprintf("Name:    %s\nEmail:   %s\nCompany: %s\nKind:    %s\n\n%s\n",
+			q.Name, q.Email, q.Company, q.Kind, q.Message),
+	})
+	return b
 }
