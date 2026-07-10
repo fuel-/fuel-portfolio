@@ -1,50 +1,48 @@
 package handler
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
 	"portfolio/internal/store"
 )
 
-func TestComposeReplyToAndHeaderInjection(t *testing.T) {
-	m := &mailer{from: "contact@example.com", to: "me@example.com"}
-	msg := string(m.compose(store.Inquiry{
-		Name:    "Ada\r\nBcc: evil@example.com",
-		Email:   "ada@example.com",
-		Kind:    "contract",
-		Message: "line1\r\n.\r\nline2",
-	}))
-
-	if !strings.Contains(msg, "Reply-To: ada@example.com\r\n") {
-		t.Error("Reply-To not set to visitor email")
+func TestPayload(t *testing.T) {
+	m := &mailer{from: "contact@contact.gideon.gg", to: "me@example.com"}
+	var got map[string]any
+	if err := json.Unmarshal(m.payload(store.Inquiry{
+		Name: "Ada", Email: "ada@example.com", Kind: "contract", Message: "hi",
+	}), &got); err != nil {
+		t.Fatalf("payload is not valid json: %v", err)
 	}
-	// CRLF smuggled through the name must not become its own header line.
-	// Only the header block (above the blank-line separator) can be injected;
-	// anything below it is body text a mail server never parses as a header.
-	headers, _, _ := strings.Cut(msg, "\r\n\r\n")
-	if strings.Contains(headers, "\r\nBcc:") {
-		t.Errorf("header injection not neutralized:\n%s", headers)
+	if got["reply_to"] != "ada@example.com" {
+		t.Errorf("reply_to = %v, want visitor email", got["reply_to"])
 	}
-	if !strings.Contains(msg, "line1") || !strings.Contains(msg, "line2") {
-		t.Error("message body missing")
+	if got["from"] != "contact@contact.gideon.gg" {
+		t.Errorf("from = %v", got["from"])
+	}
+	to, _ := got["to"].([]any)
+	if len(to) != 1 || to[0] != "me@example.com" {
+		t.Errorf("to = %v, want [me@example.com]", got["to"])
+	}
+	if s, _ := got["subject"].(string); !strings.Contains(s, "Ada") {
+		t.Errorf("subject = %q, want visitor name", got["subject"])
 	}
 }
 
 func TestMailerFromEnv(t *testing.T) {
-	for _, k := range []string{"SMTP_HOST", "SMTP_USER", "SMTP_PASS", "SMTP_FROM", "SMTP_TO", "SMTP_PORT"} {
-		t.Setenv(k, "")
-	}
+	t.Setenv("SMTP_PASS", "")
+	t.Setenv("SMTP_FROM", "")
+	t.Setenv("SMTP_TO", "")
 	if mailerFromEnv() != nil {
-		t.Error("expected nil mailer when SMTP_* unset")
+		t.Error("expected nil mailer when creds unset")
 	}
-	t.Setenv("SMTP_HOST", "smtp.resend.com")
-	t.Setenv("SMTP_USER", "resend")
 	t.Setenv("SMTP_PASS", "re_x")
-	t.Setenv("SMTP_FROM", "contact@example.com")
+	t.Setenv("SMTP_FROM", "contact@contact.gideon.gg")
 	t.Setenv("SMTP_TO", "me@example.com")
 	m := mailerFromEnv()
-	if m == nil || m.addr != "smtp.resend.com:587" {
-		t.Fatalf("mailer = %+v, want addr smtp.resend.com:587", m)
+	if m == nil || m.apiKey != "re_x" || m.to != "me@example.com" {
+		t.Fatalf("mailer = %+v, want configured", m)
 	}
 }
