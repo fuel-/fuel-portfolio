@@ -39,13 +39,20 @@ func (s *Server) contact(w http.ResponseWriter, r *http.Request) {
 		s.renderPartial(w, "contact_form", f)
 		return
 	}
-	_, err := s.st.SaveInquiry(store.Inquiry{
+	inq := store.Inquiry{
 		Name: f.Name, Email: f.Email, Company: f.Company, Kind: f.Kind, Message: f.Message,
-	})
-	if err != nil {
+	}
+	if _, err := s.st.SaveInquiry(inq); err != nil {
 		s.log.Error("save inquiry", "err", err)
 		s.renderPartial(w, "contact_error", content.Me)
 		return
+	}
+	// The db row is the source of truth; a mail hiccup must not break the
+	// form or lose the lead, so we only log a send failure.
+	if s.mail != nil {
+		if err := s.mail.send(inq); err != nil {
+			s.log.Error("notify inquiry", "err", err)
+		}
 	}
 	s.renderPartial(w, "contact_success", f)
 }

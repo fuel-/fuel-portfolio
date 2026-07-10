@@ -22,6 +22,7 @@ type Server struct {
 	st       *store.Store
 	reg      *terminal.Registry
 	log      *slog.Logger
+	mail     *mailer // nil when SMTP_* env vars are unset
 	h        http.Handler
 }
 
@@ -41,7 +42,12 @@ type pageData struct {
 }
 
 func New(templatesFS, staticFS fs.FS, st *store.Store, reg *terminal.Registry, log *slog.Logger) (*Server, error) {
-	s := &Server{pages: map[string]*template.Template{}, st: st, reg: reg, log: log}
+	s := &Server{pages: map[string]*template.Template{}, st: st, reg: reg, log: log, mail: mailerFromEnv()}
+	if s.mail == nil {
+		log.Info("smtp not configured; inquiries saved to db only")
+	} else {
+		log.Info("smtp configured", "to", s.mail.to)
+	}
 
 	for _, page := range []string{"home.html", "project_page.html", "404.html", "500.html"} {
 		t, err := template.ParseFS(templatesFS,
